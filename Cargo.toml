@@ -1,11 +1,12 @@
 [package]
 name = "russimp-sys"
-version = "2.0.2"
+version = "2.0.2-custom"
 authors = ["Jhonny Knaak de Vargas"]
 edition = "2021"
 license-file = "LICENSE"
 readme = "README.md"
 homepage = "https://github.com/jkvargas/russimp-sys"
+rust-version = "1.60.0"
 categories = [
     "rendering",
     "external-ffi-bindings",
@@ -36,23 +37,23 @@ doctest = false
 [[bin]]
 name = "package"
 path = "bin/package/main.rs"
+required-features = ["build-assimp", "prebuilt"]
 
 [features]
 default = []
-build-assimp = []
-prebuilt = []
+build-assimp = ["dep:cmake", "dep:which", "dep:bindgen"]
+prebuilt = ["dep:tar", "dep:ureq", "dep:flate2"]
 nozlib = []
-static-link = ["build-assimp"]
+static-link = []
 
 [dependencies]
-flate2 = "1.0.25"
-tar = "0.4.38"
+flate2 = { version = "1.0.28", optional = true }
+tar = { version = "0.4.38", optional = true }
 
 [build-dependencies]
-bindgen = "0.63.0"
-built = "0.5.2"
-cmake = "0.1.49"
-flate2 = "1.0.25"
-reqwest = { version = "0.11.13", features = ["blocking", "rustls-tls"] }
-tar = "0.4.38"
-which = "4.3.0"
+bindgen = { version = "0.69.4", optional = true, default-features = false }
+cmake = { version = "0.1.50", optional = true }
+flate2 = { version = "1.0.28", optional = true }
+ureq = { version = "2.9.6", optional = true }
+tar = { version = "0.4.40", optional = true }
+which = { version = "6.0.1", optional = true }

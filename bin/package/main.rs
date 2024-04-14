@@ -30,11 +30,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let ar_dst_dir = PathBuf::from(option_env!("RUSSIMP_PACKAGE_DIR").unwrap_or(env!("OUT_DIR")));
 
-    let target = russimp_sys::built_info::TARGET;
     let ar_filename = format!(
         "russimp-{}-{}-{}.tar.gz",
         env!("CARGO_PKG_VERSION"),
-        target,
+        russimp_sys::built_info::TARGET,
         static_lib()
     );
 
@@ -49,12 +48,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // On Windows, the dynamic libraries are located in the bin directory.
     if static_lib() == "dylib" && cfg!(target_env = "msvc") {
-        archive.append_dir_all(format!("bin"), from_dir.join("bin"))?;
+        archive.append_dir_all("bin", from_dir.join("bin"))?;
     }
 
     archive.append_dir_all("include", from_dir.join("include"))?;
-    archive.append_dir_all(format!("lib"), from_dir.join("lib"))?;
-    archive.append_file(format!("{}", LICENSE_FILEPATH), &mut licence)?;
+    archive.append_dir_all("lib", from_dir.join("lib"))?;
+    archive.append_file(LICENSE_FILEPATH, &mut licence)?;
+    archive.append_file("bindings.rs", &mut File::open(out_dir.join("bindings.rs"))?)?;
 
     archive.finish()?;
 

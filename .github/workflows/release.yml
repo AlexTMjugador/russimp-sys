@@ -15,27 +15,30 @@ jobs:
     strategy:
       matrix:
         target:
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             triple: x86_64-unknown-linux-gnu
-          - os: macos-latest
-            triple: x86_64-apple-darwin
+          - os: macos-14
+            triple: aarch64-apple-darwin
           - os: windows-latest
-            triple: x86_64-pc-windows-msvc
-        features: [ 'build-assimp', 'static-link' ]
+            triple: x86_64-pc-windows-gnu
+        include:
+          - features: build-assimp,prebuilt,static-link
     steps:
       - name: Checkout
         uses: actions/checkout@v3
         with:
           submodules: true
 
-      # LLVM comes preinstalled on Windows and macOS runners.
+      # LLVM comes preinstalled on Windows runners
       - name: Install LLVM
-        if: runner.os == 'Linux'
-        uses: KyleMayes/install-llvm-action@v1
-        with:
-          directory: ${{ runner.temp }}/llvm
-          cached: true
-          version: '14.0'
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" == 'Linux' ]; then
+            sudo apt-get update
+            sudo apt-get install llvm-dev libclang-dev clang
+          elif [ "$RUNNER_OS" == 'macOS' ]; then
+            brew install llvm
+          fi
 
       # CMake and Rust are preinstalled on all runners.
 
@@ -46,13 +49,12 @@ jobs:
       - name: Cache Rust
         uses: Swatinem/rust-cache@v2
 
-      - name: Build
-        run: cargo build --target ${{ matrix.target.triple }} --features ${{ matrix.features }}
-
       - name: Package Assimp
-        run: cargo run --bin package --target ${{ matrix.target.triple }} --bin package --features ${{ matrix.features }}
+        run: cargo run --release --bin package --target ${{ matrix.target.triple }} --features ${{ matrix.features }}
         env:
           RUSSIMP_PACKAGE_DIR: ./russimp-package
+          LDFLAGS: "${{ runner.os == 'macOS' && '-L/opt/homebrew/opt/llvm/lib' || '' }}"
+          DYLD_FALLBACK_LIBRARY_PATH: "${{ runner.os == 'macOS' && '/opt/homebrew/opt/llvm/lib' || '' }}"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
@@ -61,44 +63,3 @@ jobs:
           path: ${{ env.RUSSIMP_PACKAGE_DIR }}/*
         env:
           RUSSIMP_PACKAGE_DIR: ./russimp-package
-
-  publish:
-    name: Publish Release
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          submodules: true
-
-      - name: Download artifacts
-        uses: actions/download-artifact@v3
-        with:
-          name: russimp-packages
-          path: ${{ runner.temp }}/russimp-package
-
-      - name: List artifacts
-        run: |
-          echo "Received artifacts:"
-          ls -l $RUSSIMP_PACKAGE_DIR
-        env:
-          RUSSIMP_PACKAGE_DIR: ${{ runner.temp }}/russimp-package
-
-      - name: Publish release on GitHub
-        uses: softprops/action-gh-release@v1
-        with:
-          generate_release_notes: true
-          body: |
-            This release was automatically created by GitHub Actions.
-          files: |
-            ${{ env.RUSSIMP_PACKAGE_DIR }}/*
-          token: ${{ secrets.ACCESS_TOKEN }}
-        env:
-          RUSSIMP_PACKAGE_DIR: ${{ runner.temp }}/russimp-package
-
-      - name: Publish release on crates.io
-        run: cargo publish --features prebuilt --token $CRATES_IO_TOKEN
-        env:
-          CRATES_IO_TOKEN: ${{ secrets.CRATESIO_TOKEN }}
-          RUSSIMP_PACKAGE_DIR: ${{ runner.temp }}/russimp-package

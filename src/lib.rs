@@ -3,11 +3,11 @@
 #![allow(non_snake_case)]
 #![allow(improper_ctypes)]
 
-pub mod built_info {
-    include!(concat!(env!("OUT_DIR"), "/built.rs"));
-}
-
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+
+pub mod built_info {
+    pub const TARGET: &str = include_str!(concat!(env!("OUT_DIR"), "/target"));
+}
 
 impl From<aiString> for String {
     fn from(string: aiString) -> Self {
