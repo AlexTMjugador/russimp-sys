@@ -10,10 +10,6 @@ const fn static_lib() -> &'static str {
     }
 }
 
-const fn build_zlib() -> bool {
-    cfg!(not(feature = "nozlib"))
-}
-
 // Compiler specific compiler flags for CMake
 #[cfg(feature = "build-assimp")]
 fn compiler_flags() -> Vec<&'static str> {
@@ -32,14 +28,6 @@ fn lib_names() -> Vec<Library> {
 
     names.push(Library("assimp", static_lib()));
 
-    if cfg!(feature = "build-assimp") && build_zlib() {
-        names.push(Library("zlibstatic", "static"));
-    } else if cfg!(target_os = "windows") {
-        names.push(Library("zlibstatic", "dylib"));
-    } else {
-        names.push(Library("z", "dylib"));
-    }
-
     if cfg!(target_os = "linux") {
         names.push(Library("stdc++", "dylib"));
     }
@@ -54,9 +42,6 @@ fn lib_names() -> Vec<Library> {
 #[cfg(feature = "build-assimp")]
 fn build_from_source() {
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-
-    // Build Zlib from source?
-    let build_zlib = if build_zlib() { "ON" } else { "OFF" };
 
     // Build static libs?
     let build_shared = if static_lib() == "static" {
@@ -74,7 +59,7 @@ fn build_from_source() {
         .define("BUILD_SHARED_LIBS", build_shared)
         .define("ASSIMP_BUILD_ASSIMP_TOOLS", "OFF")
         .define("ASSIMP_BUILD_TESTS", "OFF")
-        .define("ASSIMP_BUILD_ZLIB", build_zlib)
+        .define("ASSIMP_BUILD_ZLIB", "OFF")
         // Disable being overly strict with warnings, which can cause build issues
         // such as: https://github.com/assimp/assimp/issues/5315
         .define("ASSIMP_WARNINGS_AS_ERRORS", "OFF")
