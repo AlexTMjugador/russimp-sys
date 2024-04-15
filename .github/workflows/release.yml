@@ -50,7 +50,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Package Assimp
-        run: cargo run --release --bin package --target ${{ matrix.target.triple }} --features ${{ matrix.features }}
+        run: cargo run -vv --release --bin package --target ${{ matrix.target.triple }} --features ${{ matrix.features }}
         env:
           RUSSIMP_PACKAGE_DIR: ./russimp-package
           LDFLAGS: "${{ runner.os == 'macOS' && '-L/opt/homebrew/opt/llvm/lib' || '' }}"
