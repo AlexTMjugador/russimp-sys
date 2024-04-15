@@ -10,25 +10,14 @@ const fn static_lib() -> &'static str {
     }
 }
 
-// Compiler specific compiler flags for CMake
-#[cfg(feature = "build-assimp")]
-fn compiler_flags() -> Vec<&'static str> {
-    if cfg!(target_env = "msvc") {
-        // Find Ninja
-        if which::which("ninja").is_ok() {
-            env::set_var("CMAKE_GENERATOR", "Ninja");
-        }
-    }
-
-    vec![]
-}
-
 fn lib_names() -> Vec<Library> {
     let mut names = Vec::new();
 
     names.push(Library("assimp", static_lib()));
 
-    if cfg!(target_os = "linux") {
+    if cfg!(all(unix, not(target_os = "macos")))
+        || cfg!(all(target_os = "windows", target_env = "gnu"))
+    {
         names.push(Library("stdc++", "dylib"));
     }
 
@@ -65,10 +54,21 @@ fn build_from_source() {
         .define("ASSIMP_WARNINGS_AS_ERRORS", "OFF")
         .define("LIBRARY_SUFFIX", "");
 
-    // Add compiler flags
-    for flag in compiler_flags().iter() {
-        cmake.cflag(flag);
-        cmake.cxxflag(flag);
+    if let Ok(zlib_include_dir) = env::var("DEP_Z_INCLUDE") {
+        // Use the zlib provided by libz-sys, if it built zlib from source and couldn't find it on
+        // the system. Inspired by the following example:
+        // https://doc.rust-lang.org/cargo/reference/build-script-examples.html#using-another-sys-crate
+        cmake.define(
+            "ZLIB_ROOT",
+            PathBuf::from(zlib_include_dir).parent().unwrap(),
+        );
+    }
+
+    if cfg!(target_env = "msvc") {
+        // Find Ninja
+        if which::which("ninja").is_ok() {
+            env::set_var("CMAKE_GENERATOR", "Ninja");
+        }
     }
 
     let cmake_dir = cmake.build();

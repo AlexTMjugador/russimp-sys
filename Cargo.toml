@@ -16,6 +16,7 @@ categories = [
 keywords = ["assimp", "3d", "blend", "3ds", "glTF"]
 repository = "https://github.com/jkvargas/russimp-sys"
 description = "Raw Assimp bindings for Rust"
+links = "assimp"
 include = [
     "/assimp/",
     "/src/",

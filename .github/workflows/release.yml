@@ -57,7 +57,7 @@ jobs:
           DYLD_FALLBACK_LIBRARY_PATH: "${{ runner.os == 'macOS' && '/opt/homebrew/opt/llvm/lib' || '' }}"
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: russimp-packages
           path: ${{ env.RUSSIMP_PACKAGE_DIR }}/*
