@@ -16,7 +16,7 @@ fn lib_names() -> Vec<Library> {
     names.push(Library("assimp", static_lib()));
 
     if cfg!(all(unix, not(target_os = "macos")))
-        || cfg!(all(target_os = "windows", target_env = "gnu"))
+        || (cfg!(target_os = "windows") && env::var("TARGET").unwrap().ends_with("-gnu"))
     {
         names.push(Library("stdc++", "dylib"));
     }
