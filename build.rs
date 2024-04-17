@@ -2,7 +2,7 @@ use std::{env, fs, path::PathBuf};
 
 struct Library(&'static str, &'static str);
 
-const fn static_lib() -> &'static str {
+const fn link_kind() -> &'static str {
     if cfg!(feature = "static-link") {
         "static"
     } else {
@@ -11,7 +11,7 @@ const fn static_lib() -> &'static str {
 }
 
 fn lib_names() -> Vec<Library> {
-    let stdcxx_link_kind = if static_lib() == "static" {
+    let stdcxx_link_kind = if link_kind() == "static" {
         "static:-bundle"
     } else {
         "dylib"
@@ -19,7 +19,7 @@ fn lib_names() -> Vec<Library> {
 
     let mut libraries = Vec::new();
 
-    libraries.push(Library("assimp", static_lib()));
+    libraries.push(Library("assimp", link_kind()));
 
     if cfg!(all(unix, not(target_os = "macos")))
         || (cfg!(target_os = "windows") && env::var("TARGET").unwrap().ends_with("-gnu"))
@@ -39,18 +39,14 @@ fn build_from_source() {
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
 
     // Build static libs?
-    let build_shared = if static_lib() == "static" {
-        "OFF"
-    } else {
-        "ON"
-    };
+    let build_shared = if link_kind() == "static" { "OFF" } else { "ON" };
 
     // CMake
     let mut cmake = cmake::Config::new("assimp");
     cmake
         .profile("Release")
         .static_crt(true)
-        .out_dir(out_dir.join(static_lib()))
+        .out_dir(out_dir.join(link_kind()))
         .define("BUILD_SHARED_LIBS", build_shared)
         .define("ASSIMP_BUILD_ASSIMP_TOOLS", "OFF")
         .define("ASSIMP_BUILD_TESTS", "OFF")
@@ -101,7 +97,7 @@ fn link_from_package() {
         "russimp-{}-{}-{}.tar.gz",
         crate_version,
         target,
-        static_lib()
+        link_kind()
     );
 
     let ar_src_dir;
@@ -127,7 +123,7 @@ fn link_from_package() {
 
     let file = fs::File::open(ar_src_dir.join(&archive_name)).unwrap();
     let mut archive = tar::Archive::new(GzDecoder::new(file));
-    let ar_dest_dir = out_dir.join(static_lib());
+    let ar_dest_dir = out_dir.join(link_kind());
 
     archive.unpack(&ar_dest_dir).unwrap();
 
@@ -169,42 +165,23 @@ fn main() {
     compile_error!("Either feature `build-assimp` or `prebuilt` must be enabled for this crate");
 
     #[cfg(feature = "build-assimp")]
-    {
-        // assimp/defs.h requires config.h to be present, which is generated at build time when building
-        // from the source code (which is disabled by default).
-        // In this case, place an empty config.h file in the include directory to avoid compilation errors.
-        let config_file = "assimp/include/assimp/config.h";
-        let config_exists = fs::metadata(config_file).is_ok();
-        if !config_exists {
-            fs::write(config_file, "").expect(
-                r#"Unable to write config.h to assimp/include/assimp/,
-                make sure you cloned submodules with "git submodule update --init --recursive""#,
-            );
-        }
-
-        bindgen::builder()
-            .header("wrapper.h")
-            .clang_arg(format!("-I{}", out_dir.join(static_lib()).join("include").display()))
-            .clang_arg(format!("-I{}", "assimp/include"))
-            .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
-            .allowlist_type("ai.*")
-            .allowlist_function("ai.*")
-            .allowlist_var("ai.*")
-            .allowlist_var("AI_.*")
-            .derive_partialeq(true)
-            .derive_eq(true)
-            .derive_hash(true)
-            .derive_debug(true)
-            .generate()
-            .unwrap()
-            .write_to_file(out_dir.join("bindings.rs"))
-            .expect("Could not generate russimp bindings, for details see https://github.com/jkvargas/russimp-sys");
-
-        if !config_exists {
-            // Clean up config.h
-            fs::remove_file(config_file).ok();
-        }
-    }
+    bindgen::builder()
+        .header("wrapper.h")
+        .clang_arg(format!("-I{}", out_dir.join(link_kind()).join("include").display()))
+        .clang_arg(format!("-I{}", "assimp/include"))
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
+        .allowlist_type("ai.*")
+        .allowlist_function("ai.*")
+        .allowlist_var("ai.*")
+        .allowlist_var("AI_.*")
+        .derive_partialeq(true)
+        .derive_eq(true)
+        .derive_hash(true)
+        .derive_debug(true)
+        .generate()
+        .unwrap()
+        .write_to_file(out_dir.join("bindings.rs"))
+        .expect("Could not generate russimp bindings, for details see https://github.com/jkvargas/russimp-sys");
 
     for n in lib_names().iter() {
         println!("cargo:rustc-link-lib={}={}", n.1, n.0);
