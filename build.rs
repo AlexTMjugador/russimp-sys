@@ -11,21 +11,27 @@ const fn static_lib() -> &'static str {
 }
 
 fn lib_names() -> Vec<Library> {
-    let mut names = Vec::new();
+    let stdcxx_link_kind = if static_lib() == "static" {
+        "static:-bundle"
+    } else {
+        "dylib"
+    };
 
-    names.push(Library("assimp", static_lib()));
+    let mut libraries = Vec::new();
+
+    libraries.push(Library("assimp", static_lib()));
 
     if cfg!(all(unix, not(target_os = "macos")))
         || (cfg!(target_os = "windows") && env::var("TARGET").unwrap().ends_with("-gnu"))
     {
-        names.push(Library("stdc++", "dylib"));
+        libraries.push(Library("stdc++", stdcxx_link_kind));
     }
 
     if cfg!(target_os = "macos") {
-        names.push(Library("c++", "dylib"));
+        libraries.push(Library("c++", stdcxx_link_kind));
     }
 
-    names
+    libraries
 }
 
 #[cfg(feature = "build-assimp")]
