@@ -82,7 +82,4 @@ jobs:
         env:
           LDFLAGS: "${{ runner.os == 'macOS' && '-L/opt/homebrew/opt/llvm/lib' || '' }}"
           DYLD_FALLBACK_LIBRARY_PATH: "${{ runner.os == 'macOS' && '/opt/homebrew/opt/llvm/lib' || '' }}"
-          # I'm not sure why this is needed, but it fixes missing symbols when linking in the final executable due
-          # to libz not being considered. Hacky!
-          RUSTFLAGS: -C link-args=-lz
         run: cargo test -vv --target ${{ matrix.target.triple }} --features '${{ matrix.features }}'

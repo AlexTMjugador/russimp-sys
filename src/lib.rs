@@ -3,6 +3,9 @@
 #![allow(non_snake_case)]
 #![allow(improper_ctypes)]
 
+// Needed so that the Rust compiler links the code in this crate with libz's
+extern crate libz_sys;
+
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 pub mod built_info {
